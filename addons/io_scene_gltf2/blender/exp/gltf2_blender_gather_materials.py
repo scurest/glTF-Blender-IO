@@ -137,10 +137,18 @@ def __gather_extensions(blender_material, export_settings):
 
     if bpy.app.version < (2, 80, 0):
         if blender_material.use_shadeless:
-            extensions["KHR_materials_unlit"] = Extension("KHR_materials_unlit", {}, False)
+            extensions["KHR_materials_unlit"] = Extension(
+                "KHR_materials_unlit",
+                gltf2_io.EmptyDict,
+                required=False,
+            )
     else:
         if gltf2_blender_get.get_socket_or_texture_slot(blender_material, "Background") is not None:
-            extensions["KHR_materials_unlit"] = Extension("KHR_materials_unlit", {}, False)
+            extensions["KHR_materials_unlit"] = Extension(
+                "KHR_materials_unlit",
+                gltf2_io.EmptyDict,
+                required=False,
+            )
 
     # TODO specular glossiness extension
 

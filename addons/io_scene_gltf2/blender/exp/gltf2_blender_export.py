@@ -24,6 +24,7 @@ from io_scene_gltf2.blender.exp.gltf2_blender_gltf2_exporter import GlTF2Exporte
 from io_scene_gltf2.io.com.gltf2_io_debug import print_console, print_newline
 from io_scene_gltf2.io.exp import gltf2_io_export
 from io_scene_gltf2.io.exp import gltf2_io_draco_compression_extension
+from io_scene_gltf2.io.com.gltf2_io import EmptyDict, EmptyList, Null
 
 
 def save(context, export_settings):
@@ -88,10 +89,16 @@ def __create_buffer(exporter, export_settings):
 def __fix_json(obj):
     # TODO: move to custom JSON encoder
     fixed = obj
-    if isinstance(obj, dict):
+    if obj is EmptyDict:
+        fixed = {}
+    elif obj is EmptyList:
+        fixed = []
+    elif obj is Null:
+        fixed = None
+    elif isinstance(obj, dict):
         fixed = {}
         for key, value in obj.items():
-            if not __should_include_json_value(key, value):
+            if value is None or __is_empty_collection(value):
                 continue
             fixed[key] = __fix_json(value)
     elif isinstance(obj, list):
@@ -103,16 +110,6 @@ def __fix_json(obj):
         if int(obj) == obj:
             return int(obj)
     return fixed
-
-
-def __should_include_json_value(key, value):
-    allowed_empty_collections = ["KHR_materials_unlit"]
-
-    if value is None:
-        return False
-    elif __is_empty_collection(value) and key not in allowed_empty_collections:
-        return False
-    return True
 
 
 def __is_empty_collection(value):

@@ -25,6 +25,11 @@ import traceback
 from io_scene_gltf2.io.com import gltf2_io_debug
 
 
+EmptyDict = object()  # use this where you want an empty dict
+EmptyList = object()  # use this where you want an empty list
+Null = object()  # use this where you want a null
+
+
 def from_int(x):
     assert isinstance(x, int) and not isinstance(x, bool)
     return x
@@ -98,13 +103,16 @@ def extension_to_dict(obj):
         return {k: extension_to_dict(v) for (k, v) in obj.items()}
     return obj
 
+
 def from_extension(x):
     x = extension_to_dict(x)
-    assert isinstance(x, dict)
+    assert isinstance(x, dict) or x is EmptyDict
     return x
+
 
 def from_extra(x):
     return extension_to_dict(x)
+
 
 class AccessorSparseIndices:
     """Index array of size `count` that points to those accessor attributes that deviate from
