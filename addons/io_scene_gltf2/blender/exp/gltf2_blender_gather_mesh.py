@@ -14,10 +14,11 @@
 
 import bpy
 from typing import Optional, Dict, List, Any, Tuple
-from .gltf2_blender_export_keys import MORPH
+from .gltf2_blender_export_keys import MORPH, UNUSED_MATERIALS
 from io_scene_gltf2.blender.exp.gltf2_blender_gather_cache import cached
 from io_scene_gltf2.io.com import gltf2_io
 from io_scene_gltf2.blender.exp import gltf2_blender_gather_primitives
+from io_scene_gltf2.blender.exp import gltf2_blender_gather_materials
 from ..com.gltf2_blender_extras import generate_extras
 from io_scene_gltf2.io.com.gltf2_io_debug import print_console
 from io_scene_gltf2.io.exp.gltf2_io_user_extensions import export_user_extensions
@@ -47,6 +48,9 @@ def gather_mesh(blender_mesh: bpy.types.Mesh,
     if len(mesh.primitives) == 0:
         print_console("WARNING", "Mesh '{}' has no primitives and will be omitted.".format(mesh.name))
         return None
+
+    if export_settings[UNUSED_MATERIALS]:
+        __gather_additional_materials(mesh, material_names, export_settings)
 
     export_user_extensions('gather_mesh_hook',
                            export_settings,
@@ -157,3 +161,24 @@ def __gather_weights(blender_mesh: bpy.types.Mesh,
                 weights.append(blender_shape_key.value)
 
     return weights
+
+
+def __gather_additional_materials(mesh: gltf2_io.Mesh,
+                                  material_names: Tuple[str],
+                                  export_settings):
+    """
+    Stores materials for all material slots on the mesh.
+    Without this, only materials used by primitives are exported.
+    """
+    mesh._additional_materials = []
+
+    for material_name in material_names:
+        blender_material = bpy.data.materials[material_name]
+        double_sided = not blender_material.use_backface_culling
+        material = gltf2_blender_gather_materials.gather_material(
+            blender_material,
+            double_sided,
+            export_settings,
+        )
+
+        mesh._additional_materials.append(material)

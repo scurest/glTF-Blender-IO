@@ -203,6 +203,12 @@ class ExportGLTF2_Base:
         default=True
     )
 
+    export_unused_materials: BoolProperty(
+        name='Unused Materials',
+        description='Export materials from unused material slots too',
+        default=False
+    )
+
     export_colors: BoolProperty(
         name='Vertex Colors',
         description='Export vertex colors with meshes',
@@ -432,6 +438,7 @@ class ExportGLTF2_Base:
             export_settings['gltf_draco_mesh_compression'] = False
 
         export_settings['gltf_materials'] = self.export_materials
+        export_settings['gltf_unused_materials'] = self.export_unused_materials
         export_settings['gltf_colors'] = self.export_colors
         export_settings['gltf_cameras'] = self.export_cameras
 
@@ -624,6 +631,7 @@ class GLTF_PT_export_geometry(bpy.types.Panel):
         col.prop(operator, 'export_tangents')
         layout.prop(operator, 'export_colors')
         layout.prop(operator, 'export_materials')
+        layout.prop(operator, 'export_unused_materials')
         col = layout.column()
         col.active = operator.export_materials
         col.prop(operator, 'export_image_format')
