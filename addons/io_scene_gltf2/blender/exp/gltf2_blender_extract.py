@@ -185,6 +185,8 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
                 joint_name_to_index = {joint.name: index for index, joint in enumerate(skin.joints)}
                 group_to_joint = [joint_name_to_index.get(g.name) for g in blender_vertex_groups]
 
+                needs_neutral_bone = False
+
                 # Find out max number of bone influences
                 for blender_polygon in blender_mesh.polygons:
                     for loop_index in blender_polygon.loop_indices:
@@ -286,6 +288,10 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
                         bones.append((joint, weight))
                 bones.sort(key=lambda x: x[1], reverse=True)
                 bones = tuple(bones)
+                if not bones:
+                    # Assign unassigned verts to a neutral bone (inserted later).
+                    needs_neutral_bone = True
+                    bones = ((len(skin.joints), 1.0),)
                 vert += (bones,)
 
             for shape_key in shape_keys:
@@ -301,6 +307,10 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
 
             vert_idx = prim.verts.setdefault(vert, len(prim.verts))
             prim.indices.append(vert_idx)
+
+    if armature and needs_neutral_bone:
+        skin.__needs_neutral_bone = True
+        skin.__arma_name = armature.data.name
 
     #
     # Put the verts into attribute arrays.

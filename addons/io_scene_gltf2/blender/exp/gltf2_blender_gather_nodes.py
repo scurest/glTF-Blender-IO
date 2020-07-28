@@ -88,6 +88,10 @@ def __gather_node(blender_object, library, blender_scene, dupli_object_parent, e
             node.children.append(correction_node)
         node.camera = None
 
+    # Used by add_neutral_bones_to_node_tree to find armatures
+    if blender_object.type == "ARMATURE":
+        node.__arma_name = blender_object.data.name
+
     export_user_extensions('gather_node_hook', export_settings, node, blender_object)
 
     return node
@@ -494,3 +498,36 @@ def __get_correction_node(blender_object, export_settings):
         translation=None,
         weights=None
     )
+
+
+def add_neutral_bones_to_node_tree(roots, export_settings):
+    # For skinning: glTF requires all verts be assigned to at least one
+    # bone. In Blender, unassigned verts act as if they weren't skinned. To
+    # handle this, unassigned verts are assigned to a "neutral bone" that has
+    # no transform.
+    #
+    # This function makes a post-processing pass over the nodes, inserting
+    # neutral bones anywhere they were marked as needed.
+
+    # Find what needs a neutral bone
+    skins = set()
+    armas = {}
+    def visit(node):
+        nonlocal skins
+        nonlocal armas
+        if node.skin is not None:
+            if getattr(node.skin, '__needs_neutral_bone', False):
+                skins.add(node.skin)
+        if hasattr(node, '__arma_name'):
+            armas[node.__arma_name] = node
+        for child in node.children or []:
+            visit(child)
+    for root in roots:
+        visit(root)
+
+    for skin in skins:
+        arma_node = armas[skin.__arma_name]
+        joint_node = gltf2_blender_gather_joints.create_neutral_joint(export_settings)
+        arma_node.children.append(joint_node)
+        gltf2_blender_gather_skins.add_neutral_bone_to_skin(skin, joint_node, export_settings)
+        skin.__needs_neutral_bone = False

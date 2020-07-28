@@ -61,6 +61,8 @@ def __gather_scene(blender_scene, export_settings):
             if node is not None:
                 scene.nodes.append(node)
 
+    gltf2_blender_gather_nodes.add_neutral_bones_to_node_tree(scene.nodes, export_settings)
+
     export_user_extensions('gather_scene_hook', export_settings, scene, blender_scene)
 
     return scene

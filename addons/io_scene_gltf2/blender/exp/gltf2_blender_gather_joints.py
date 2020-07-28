@@ -92,7 +92,42 @@ def gather_joint(blender_object, blender_bone, export_settings):
 
     return node
 
+
 def __gather_extras(blender_bone, export_settings):
     if export_settings['gltf_extras']:
         return generate_extras(blender_bone.bone)
     return None
+
+
+def create_neutral_joint(export_settings):
+    # Create neutral joint; acts like a root bone with identity TRS.
+    # Assigning verts to this joint should act as if they weren't skinned.
+
+    axis_basis_change = mathutils.Matrix.Identity(4)
+    if export_settings[gltf2_blender_export_keys.YUP]:
+        axis_basis_change = mathutils.Matrix(
+            ((1.0, 0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, -1.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
+
+    trans, rot, sca = axis_basis_change.decompose()
+    translation, rotation, scale = (None, None, None)
+    if trans[0] != 0.0 or trans[1] != 0.0 or trans[2] != 0.0:
+        translation = [trans[0], trans[1], trans[2]]
+    if rot[0] != 1.0 or rot[1] != 0.0 or rot[2] != 0.0 or rot[3] != 0.0:
+        rotation = [rot[1], rot[2], rot[3], rot[0]]
+    if sca[0] != 1.0 or sca[1] != 1.0 or sca[2] != 1.0:
+        scale = [sca[0], sca[1], sca[2]]
+
+    return gltf2_io.Node(
+        camera=None,
+        children=[],
+        extensions=None,
+        extras=None,
+        matrix=None,
+        mesh=None,
+        name='Neutral',
+        rotation=rotation,
+        scale=scale,
+        skin=None,
+        translation=translation,
+        weights=None,
+    )

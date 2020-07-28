@@ -44,6 +44,9 @@ def gather_skin(blender_object, export_settings):
         skeleton=__gather_skeleton(blender_object, export_settings)
     )
 
+    # Used by add_neutral_bone_to_skin
+    skin.__matrix_world = blender_object.matrix_world
+
     export_user_extensions('gather_skin_hook', export_settings, skin, blender_object)
 
     return skin
@@ -188,3 +191,29 @@ def get_bone_tree(blender_dummy, blender_object):
     list_ = list(set(bones))
     root_ = list(set(root_bones))
     return [blender_object.data.bones[b] for b in list_], children, [blender_object.pose.bones[b] for b in root_]
+
+
+def add_neutral_bone_to_skin(skin, node, export_settings):
+    skin.joints.append(node)
+    skin.inverse_bind_matrices.count += 1
+
+    # Calculate inverse bind of neutral bone
+    axis_basis_change = mathutils.Matrix.Identity(4)
+    if export_settings[gltf2_blender_export_keys.YUP]:
+        axis_basis_change = mathutils.Matrix(
+            ((1.0, 0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, -1.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
+    inverse_bind_matrix = (
+        axis_basis_change @
+        skin.__matrix_world
+    ).inverted()
+    # flatten the matrix
+    data = []
+    for column in range(0, 4):
+        for row in range(0, 4):
+            data.append(inverse_bind_matrix[row][column])
+
+    inv_matrix_bin = gltf2_io_binary_data.BinaryData.from_list(data, gltf2_io_constants.ComponentType.Float)
+    skin.inverse_bind_matrices.buffer_view = gltf2_io_binary_data.BinaryData(
+        skin.inverse_bind_matrices.buffer_view.data +
+        inv_matrix_bin.data
+    )
