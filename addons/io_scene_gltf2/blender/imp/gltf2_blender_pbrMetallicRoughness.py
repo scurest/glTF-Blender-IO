@@ -112,6 +112,12 @@ def pbr_metallic_roughness(mh: MaterialHelper):
         normal_socket=pbr_node.inputs['Clearcoat Normal'],
     )
 
+    ior_and_specular(
+        mh,
+        specular_socket=pbr_node.inputs['Specular'],
+        ior_socket=pbr_node.inputs['IOR'],
+    )
+
 
 def calc_locations(mh):
     """Calculate locations to place each bit of the node graph at."""
@@ -451,6 +457,34 @@ def occlusion(mh: MaterialHelper, location, occlusion_socket):
         is_data=True,
         color_socket=color_socket,
     )
+
+
+def ior_and_specular(mh, specular_socket, ior_socket):
+    try:
+        ior_ext = mh.pymat.extensions['KHR_materials_ior']
+    except Exception:
+        ior_ext = {}
+    try:
+        specular_ext = mh.pymat.extensions['KHR_materials_specular']
+    except Exception:
+        specular_ext = {}
+
+    if not ior_ext and not specular_ext:
+        return
+
+    ior = ior_ext.get('ior', 1.5)
+    if ior_ext:
+        ior_socket.default_value = ior
+
+    specular_factor = specular_ext.get('specularFactor', 1)
+    specular_color_factor = specular_ext.get('specularColorFactor', [1, 1, 1])
+
+    # For KHR_materials_specular, only handle specular = 0.
+    # See github.com/KhronosGroup/glTF/pull/1719#issuecomment-608289714
+    # for formulas.
+    f = [(ior - 1) * specular_factor * c for c in specular_color_factor]
+    if f == [0, 0, 0]:
+        specular_socket.default_value = 0
 
 
 # => [Add Emission] => [Mix Alpha] => [Material Output]
