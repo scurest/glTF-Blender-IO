@@ -43,7 +43,9 @@ def gather_image(
     name = __gather_name(image_data, export_settings)
 
     uri = __gather_uri(image_data, mime_type, name, export_settings)
-    buffer_view = __gather_buffer_view(image_data, mime_type, name, export_settings)
+    buffer_view = None
+    if uri is None:
+        buffer_view = __gather_buffer_view(image_data, mime_type, name, export_settings)
 
     image = __make_image(
         buffer_view,
@@ -137,6 +139,11 @@ def __gather_name(export_image, export_settings):
 
 @cached
 def __gather_uri(image_data, mime_type, name, export_settings):
+    if export_settings[gltf2_blender_export_keys.WRITE_ORIGINAL_IMAGE_PATHS]:
+        uri =  __image_file_uri(image_data, mime_type, export_settings)
+        if uri is not None:
+            return uri
+
     if export_settings[gltf2_blender_export_keys.FORMAT] == 'GLTF_SEPARATE':
         # as usual we just store the data in place instead of already resolving the references
         return gltf2_io_image_data.ImageData(
@@ -220,3 +227,35 @@ def __is_blender_image_a_jpeg(image: bpy.types.Image) -> bool:
         return False
     path = image.filepath_raw.lower()
     return path.endswith('.jpg') or path.endswith('.jpeg') or path.endswith('.jpe')
+
+
+def __is_blender_image_a_png(image: bpy.types.Image) -> bool:
+    if image.source != 'FILE':
+        return False
+    path = image.filepath_raw.lower()
+    return path.endswith('.png')
+
+
+def __image_file_uri(export_image, mime_type, export_settings):
+    """Gets a URI to an existing image file."""
+    image = export_image.blender_image()
+    if not image: return None
+
+    if mime_type == "image/jpeg" and not __is_blender_image_a_jpeg(image):
+        return None
+    if mime_type == "image/png" and not __is_blender_image_a_png(image):
+        return None
+
+    path_to_image = bpy.path.abspath(image.filepath_raw)
+    rel_path = os.path.relpath(
+        path_to_image,
+        start=export_settings[gltf2_blender_export_keys.FILE_DIRECTORY],
+    )
+    return _path_to_uri(rel_path)
+
+
+def _path_to_uri(path):
+    import urllib
+    path = os.path.normpath(path)
+    path = path.replace(os.sep, '/')
+    return urllib.parse.quote(path)
