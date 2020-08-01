@@ -240,6 +240,7 @@ def __image_file_uri(export_image, mime_type, export_settings):
     """Gets a URI to an existing image file."""
     image = export_image.blender_image()
     if not image: return None
+    if image.is_dirty: return None
 
     if mime_type == "image/jpeg" and not __is_blender_image_a_jpeg(image):
         return None
