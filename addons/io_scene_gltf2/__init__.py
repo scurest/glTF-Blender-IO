@@ -133,14 +133,15 @@ class ExportGLTF2_Base:
         default='',
     )
 
-    export_write_original_image_paths: BoolProperty(
-        name='Write Original Paths',
+    export_copy_textures: BoolProperty(
+        name='Copy All Textures',
         description=(
-            'Try to write a path to an existing image file.\n'
-            'When this is not possible, images are written to the usual '
-            'destination (eg. for GLB mode, into the .glb)'
+            'Copy all textures to the texture folder. This makes it easier '
+            'to distribute your model.\n'
+            'When off, images will use a relative URI to an existing file '
+            'when possible'
         ),
-        default=False,
+        default=True,
     )
 
     export_texcoords: BoolProperty(
@@ -425,7 +426,7 @@ class ExportGLTF2_Base:
 
         export_settings['gltf_format'] = self.export_format
         export_settings['gltf_image_format'] = self.export_image_format
-        export_settings['gltf_write_original_image_paths'] = self.export_write_original_image_paths
+        export_settings['gltf_copy_textures'] = self.export_copy_textures
         export_settings['gltf_copyright'] = self.export_copyright
         export_settings['gltf_texcoords'] = self.export_texcoords
         export_settings['gltf_normals'] = self.export_normals
@@ -552,8 +553,7 @@ class GLTF_PT_export_main(bpy.types.Panel):
         layout.prop(operator, 'export_format')
         if operator.export_format == 'GLTF_SEPARATE':
             layout.prop(operator, 'export_texture_dir', icon='FILE_FOLDER')
-        col = layout.column(heading="Textures", align=True)
-        col.prop(operator, 'export_write_original_image_paths')
+            layout.prop(operator, 'export_copy_textures')
         layout.prop(operator, 'export_copyright')
         layout.prop(operator, 'will_save_settings')
 

@@ -139,12 +139,12 @@ def __gather_name(export_image, export_settings):
 
 @cached
 def __gather_uri(image_data, mime_type, name, export_settings):
-    if export_settings[gltf2_blender_export_keys.WRITE_ORIGINAL_IMAGE_PATHS]:
-        uri =  __image_file_uri(image_data, mime_type, export_settings)
-        if uri is not None:
-            return uri
-
     if export_settings[gltf2_blender_export_keys.FORMAT] == 'GLTF_SEPARATE':
+        # When 'Copy Textures' is off, try to write a URI to an existing file
+        if not export_settings[gltf2_blender_export_keys.COPY_TEXTURES]:
+            uri =  __image_file_uri(image_data, mime_type, export_settings)
+            if uri is not None: return uri
+
         # as usual we just store the data in place instead of already resolving the references
         return gltf2_io_image_data.ImageData(
             data=image_data.encode(mime_type=mime_type),
