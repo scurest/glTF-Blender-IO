@@ -248,6 +248,7 @@ def __image_file_uri(export_image, mime_type, export_settings):
         return None
 
     path_to_image = bpy.path.abspath(image.filepath_raw)
+    if not os.path.exists(path_to_image): return None
     rel_path = os.path.relpath(
         path_to_image,
         start=export_settings[gltf2_blender_export_keys.FILE_DIRECTORY],
