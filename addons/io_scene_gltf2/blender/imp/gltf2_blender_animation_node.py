@@ -15,10 +15,12 @@
 import json
 import bpy
 from mathutils import Vector
+import numpy as np
 
 from ...io.imp.gltf2_io_binary import BinaryData
 from .gltf2_blender_animation_utils import make_fcurve
 from .gltf2_blender_vnode import VNode
+from ..com.gltf2_blender_math import apply_mat_to_vecs, mul_by_quaternion_on_the_left
 
 
 class BlenderNodeAnim():
@@ -49,8 +51,11 @@ class BlenderNodeAnim():
 
         action = BlenderNodeAnim.get_or_create_action(gltf, node_idx, animation.track_name)
 
-        keys = BinaryData.get_data_from_accessor(gltf, animation.samplers[channel.sampler].input)
-        values = BinaryData.get_data_from_accessor(gltf, animation.samplers[channel.sampler].output)
+        keys = BinaryData.decode_accessor(gltf, animation.samplers[channel.sampler].input)
+        values = BinaryData.decode_accessor(gltf, animation.samplers[channel.sampler].output)
+        keys = keys.reshape(len(keys))
+        if not values.flags.writeable:
+            values = values.copy()
 
         if animation.samplers[channel.sampler].interpolation == "CUBICSPLINE":
             # TODO manage tangent?
@@ -62,21 +67,21 @@ class BlenderNodeAnim():
             blender_path = "location"
             group_name = "Location"
             num_components = 3
-            values = [gltf.loc_gltf_to_blender(vals) for vals in values]
+            values = gltf.locs_gltf_to_blender(values)
             values = vnode.base_locs_to_final_locs(values)
 
         elif path == "rotation":
             blender_path = "rotation_quaternion"
             group_name = "Rotation"
             num_components = 4
-            values = [gltf.quaternion_gltf_to_blender(vals) for vals in values]
+            values = gltf.quaternions_gltf_to_blender(values)
             values = vnode.base_rots_to_final_rots(values)
 
         elif path == "scale":
             blender_path = "scale"
             group_name = "Scale"
             num_components = 3
-            values = [gltf.scale_gltf_to_blender(vals) for vals in values]
+            values = gltf.scales_gltf_to_blender(values)
             values = vnode.base_scales_to_final_scales(values)
 
         # Objects parented to a bone are translated to the bone tip by default.
@@ -84,8 +89,8 @@ class BlenderNodeAnim():
         if vnode.type == VNode.Object and path == "translation":
             if vnode.parent is not None and gltf.vnodes[vnode.parent].type == VNode.Bone:
                 bone_length = gltf.vnodes[vnode.parent].bone_length
-                off = Vector((0, -bone_length, 0))
-                values = [vals + off for vals in values]
+                off = np.array([0, -bone_length, 0], dtype=np.float32)
+                values += off
 
         if vnode.type == VNode.Bone:
             # Need to animate the pose bone when the node is a bone.
@@ -111,36 +116,29 @@ class BlenderNodeAnim():
             if path == 'translation':
                 edit_trans, edit_rot = vnode.editbone_trans, vnode.editbone_rot
                 edit_rot_inv = edit_rot.conjugated()
-                values = [
-                    edit_rot_inv @ (trans - edit_trans)
-                    for trans in values
-                ]
+                values -= np.array(edit_trans)
+                values = apply_mat_to_vecs(edit_rot_inv.to_matrix(), values)
 
             elif path == 'rotation':
                 edit_rot = vnode.editbone_rot
                 edit_rot_inv = edit_rot.conjugated()
-                values = [
-                    edit_rot_inv @ rot
-                    for rot in values
-                ]
+                values = mul_by_quaternion_on_the_left(edit_rot_inv, values)
 
             elif path == 'scale':
                 pass  # no change needed
 
-        # To ensure rotations always take the shortest path, we flip
-        # adjacent antipodal quaternions.
+        # Handle quaternions on opposite sides of the sphere.
         if path == 'rotation':
-            for i in range(1, len(values)):
-                if values[i].dot(values[i-1]) < 0:
-                    values[i] = -values[i]
+            flip_quaternions(values)
 
         fps = bpy.context.scene.render.fps
 
-        coords = [0] * (2 * len(keys))
-        coords[::2] = (key[0] * fps for key in keys)
+        coords = np.empty((2 * len(keys)), dtype=np.float32)
+        coords[::2] = keys
+        coords[::2] *= fps
 
         for i in range(0, num_components):
-            coords[1::2] = (vals[i] for vals in values)
+            coords[1::2] = values[:, i]
             make_fcurve(
                 action,
                 coords,
@@ -169,3 +167,14 @@ class BlenderNodeAnim():
             gltf.action_cache[obj.name] = action
 
         return action
+
+
+def flip_quaternions(quats):
+    # Flips q to -q so that no quaternion is adjacent to a quaternion not in
+    # the same hemisphere, ie. so that q1.dot(q2) >= 0. This ensure that
+    # when you interpolate between q1 and q2, the rotation goes the "short
+    # way round".
+    dot_prods = np.sum(quats[1:] * quats[:-1], axis=1)
+    signs = np.where(dot_prods < 0, -1, +1)
+    cumprod = np.cumprod(signs)
+    quats[1:] *= cumprod.reshape(len(cumprod), 1)

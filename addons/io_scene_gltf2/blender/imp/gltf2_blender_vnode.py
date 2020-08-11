@@ -16,7 +16,14 @@ import bpy
 from mathutils import Vector, Quaternion, Matrix
 from ...io.imp.gltf2_io_binary import BinaryData
 
-from ..com.gltf2_blender_math import scale_rot_swap_matrix, nearby_signed_perm_matrix
+from ..com.gltf2_blender_math import (
+    scale_rot_swap_matrix,
+    nearby_signed_perm_matrix,
+    apply_mat_to_vecs,
+    mul_by_quaternion_on_the_left,
+    mul_by_quaternion_on_the_right,
+)
+
 
 def compute_vnodes(gltf):
     """Computes the tree of virtual nodes.
@@ -76,17 +83,23 @@ class VNode:
             m @ s,
         )
 
+    # These convert a batch of base_trs values to final_trs values at once.
+    # Same formula as trs().
+
     def base_locs_to_final_locs(self, base_locs):
         ra = self.rotation_after
-        return [ra @ loc for loc in base_locs]
+        return apply_mat_to_vecs(ra.to_matrix(), base_locs)
 
     def base_rots_to_final_rots(self, base_rots):
         ra, rb = self.rotation_after, self.rotation_before
-        return [ra @ rot @ rb for rot in base_rots]
+        result = mul_by_quaternion_on_the_left(ra, base_rots)
+        result = mul_by_quaternion_on_the_right(result, rb)
+        return result
 
     def base_scales_to_final_scales(self, base_scales):
         m = scale_rot_swap_matrix(self.rotation_before)
-        return [m @ scale for scale in base_scales]
+        return apply_mat_to_vecs(m, base_scales)
+
 
 def local_rotation(gltf, vnode_id, rot):
     """Appends a local rotation to vnode's world transform:
