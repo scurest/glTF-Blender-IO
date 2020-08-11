@@ -15,6 +15,7 @@
 import typing
 import math
 from mathutils import Matrix, Vector, Quaternion, Euler
+import numpy as np
 
 from io_scene_gltf2.blender.com.gltf2_blender_data_path import get_target_property_name
 
@@ -208,3 +209,47 @@ def nearby_signed_perm_matrix(rot):
     z[(k+2) % 3] = 0
 
     return m
+
+
+def apply_mat_to_vecs(m: Matrix, vs: np.ndarray):
+    """Given m and [v1,v2,...], computes [m@v1,m@v2,...]"""
+    if len(m) == vs.shape[1]:
+        return np.matmul(vs, np.array(m.transposed()))
+    else:
+        # (4x4 matrix) @ (3-vector)
+        assert len(m) == 4 and vs.shape[1] == 3
+        res = apply_mat_to_vecs(m.to_3x3(), vs)
+        res += np.array(m.translation)
+        return res
+
+
+def mul_by_quaternion_on_the_left(q: Quaternion, qs: np.ndarray):
+    """Given q and [q1,q2,...], computes [q@q1,q@q2,...]."""
+    m = left_hamilton_product_matrix(q)
+    return apply_mat_to_vecs(m, qs)
+
+
+def mul_by_quaternion_on_the_right(qs: np.ndarray, q: Quaternion):
+    """Given [q1,q2,...] and q, computes [q1@q,q2@q,...]."""
+    m = right_hamilton_product_matrix(q)
+    return apply_mat_to_vecs(m, qs)
+
+
+def left_hamilton_product_matrix(q: Quaternion):
+    """Returns the matrix m st. q @ q2 = m @ Vector(q2)."""
+    return Matrix([
+        [q.w, -q.x, -q.y, -q.z],
+        [q.x,  q.w, -q.z,  q.y],
+        [q.y,  q.z,  q.w, -q.x],
+        [q.z, -q.y,  q.x,  q.w],
+    ])
+
+
+def right_hamilton_product_matrix(q: Quaternion):
+    """Returns the matrix m st. q2 @ q = m @ Vector(q2)."""
+    return Matrix([
+        [q.w, -q.x, -q.y, -q.z],
+        [q.x,  q.w,  q.z, -q.y],
+        [q.y, -q.z,  q.w,  q.x],
+        [q.z,  q.y, -q.x,  q.w],
+    ])
