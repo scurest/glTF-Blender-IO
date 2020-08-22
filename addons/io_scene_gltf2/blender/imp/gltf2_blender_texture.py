@@ -43,9 +43,15 @@ def texture(
     tex_img.location = x - 240, y
     tex_img.label = label
     # Get image
-    if pytexture.source is not None:
-        BlenderImage.create(mh.gltf, pytexture.source)
-        pyimg = mh.gltf.data.images[pytexture.source]
+    source = pytexture.source
+    if source is None:
+        try:
+            source = pytexture.extensions['MSFT_texture_dds']['source']
+        except Exception:
+            pass
+    if source is not None:
+        BlenderImage.create(mh.gltf, source)
+        pyimg = mh.gltf.data.images[source]
         blender_image_name = pyimg.blender_image_name
         if blender_image_name:
             tex_img.image = bpy.data.images[blender_image_name]

@@ -84,6 +84,8 @@ def _img_extension(img):
         return '.png'
     if img.mime_type == 'image/jpeg':
         return '.jpg'
+    if img.mime_type == 'image/vnd-ms.dds':
+        return '.dds'
     return ''
 
 def _filenamify(s):
