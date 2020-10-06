@@ -34,6 +34,7 @@ def gather_primitive_attributes(blender_primitive, export_settings):
     attributes.update(__gather_texcoord(blender_primitive, export_settings))
     attributes.update(__gather_colors(blender_primitive, export_settings))
     attributes.update(__gather_skins(blender_primitive, export_settings))
+    attributes.update(__gather_custom_data(blender_primitive, export_settings))
     return attributes
 
 
@@ -44,6 +45,9 @@ def array_to_accessor(array, component_type, data_type, include_max_and_min=Fals
     if type(array) is not np.ndarray:
         array = np.array(array, dtype=dtype)
         array = array.reshape(len(array) // num_elems, num_elems)
+
+    if num_elems == 1 and len(array.shape) == 1:
+        array = array.reshape(len(array), 1)
 
     assert array.dtype == dtype
     assert array.shape[1] == num_elems
@@ -212,4 +216,17 @@ def __gather_skins(blender_primitive, export_settings):
             bone_set_index += 1
             joint_id = 'JOINTS_' + str(bone_set_index)
             weight_id = 'WEIGHTS_' + str(bone_set_index)
+    return attributes
+
+
+def __gather_custom_data(blender_primitive, export_settings):
+    attributes = {}
+    for key in blender_primitive["attributes"]:
+        if not key.startswith('_'): continue
+
+        attributes[key] = array_to_accessor(
+            blender_primitive["attributes"][key],
+            component_type=gltf2_io_constants.ComponentType.Float,
+            data_type=gltf2_io_constants.DataType.Scalar,
+        )
     return attributes

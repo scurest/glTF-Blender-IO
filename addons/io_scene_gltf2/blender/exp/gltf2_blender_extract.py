@@ -85,11 +85,12 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
 
     use_materials = export_settings[gltf2_blender_export_keys.MATERIALS]
 
-    # Fetch vert positions and bone data (joint,weights)
+    # Fetch vert data
 
     locs, morph_locs = __get_positions(blender_mesh, key_blocks, armature, blender_object, export_settings)
     if skin:
         vert_bones, num_joint_sets = __get_bone_data(blender_mesh, skin, blender_vertex_groups)
+    extra_vgroup_weights = __get_extra_vgroups(blender_mesh, modifiers, blender_vertex_groups)
 
     # In Blender there is both per-vert data, like position, and also per-loop
     # (loop=corner-of-poly) data, like normals or UVs. glTF only has per-vert
@@ -277,6 +278,9 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
                 attributes['JOINTS_%d' % i] = js
                 attributes['WEIGHTS_%d' % i] = ws
 
+        for vgroup_name, weights in extra_vgroup_weights.items():
+            attributes['_' + vgroup_name] = weights[blender_idxs]
+
         primitives.append({
             'attributes': attributes,
             'indices': indices,
@@ -450,6 +454,37 @@ def __get_colors(blender_mesh, color_i):
     rgb[:] = np.where(not_small, large_result, small_result)
 
     return colors
+
+
+def __get_extra_vgroups(blender_mesh, modifiers, blender_vertex_groups):
+    """Get vertex weights for vgroup that aren't used for skinning."""
+    if not blender_vertex_groups:
+        return {}
+
+    # Find vgroups used for skinning
+    skinning_vgroup_names = set()
+    for m in (modifiers or []):
+        if m.type == 'ARMATURE' and m.use_vertex_groups:
+            if m.object and m.object.type == 'ARMATURE':
+                for bone in m.object.data.bones:
+                    skinning_vgroup_names.add(bone.name)
+
+    if len(skinning_vgroup_names) == len(blender_vertex_groups):
+        return {}
+
+    vgroup_weights = {}
+    for i, vgroup in enumerate(blender_vertex_groups):
+        if vgroup.name in skinning_vgroup_names: continue
+        weights = []
+        for vertex in blender_mesh.vertices:
+            weight = 0.0
+            for vge in vertex.groups:
+                if vge.group == i:
+                    weight = vge.weight
+                    break
+            weights.append(weight)
+        vgroup_weights[vgroup.name] = np.array(weights, dtype=np.float32)
+    return vgroup_weights
 
 
 def __get_bone_data(blender_mesh, skin, blender_vertex_groups):
