@@ -10,10 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    strategy:
-      matrix:
-        filter: [blender_export, blender_roundtrip]
-
     steps:
       - uses: actions/checkout@v2
 
@@ -44,4 +40,4 @@ jobs:
       - name: Run Tests
         run: |
           cd tests
-          npm run test-bail -- -g ${{ matrix.filter }}
+          npm run test-bail
