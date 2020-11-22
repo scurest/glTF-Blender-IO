@@ -270,6 +270,17 @@ class ExportGLTF2_Base:
         default=False
     )
 
+    export_animation_mode: EnumProperty(
+        name='Anim Mode',
+        items=(
+            ('NORMAL', 'Normal', 'Normal'),
+            ('SINGLEMODEL', 'Single Model, Multiple Actions',
+                'For scenes with one armature. Assumes actions animate pose bones and exports '
+                'one glTF animation per action'),
+        ),
+        default='NORMAL',
+    )
+
     export_animations: BoolProperty(
         name='Animations',
         description='Exports active actions and NLA tracks as glTF animations',
@@ -492,6 +503,7 @@ class ExportGLTF2_Base:
         export_settings['gltf_yup'] = self.export_yup
         export_settings['gltf_apply'] = self.export_apply
         export_settings['gltf_current_frame'] = self.export_current_frame
+        export_settings['gltf_animation_mode'] = self.export_animation_mode
         export_settings['gltf_animations'] = self.export_animations
         if self.export_animations:
             export_settings['gltf_frame_range'] = self.export_frame_range
@@ -777,14 +789,20 @@ class GLTF_PT_export_animation_export(bpy.types.Panel):
 
         layout.active = operator.export_animations
 
-        layout.prop(operator, 'export_frame_range')
-        layout.prop(operator, 'export_frame_step')
-        layout.prop(operator, 'export_force_sampling')
-        layout.prop(operator, 'export_nla_strips')
+        layout.prop(operator, 'export_animation_mode')
 
-        row = layout.row()
-        row.active = operator.export_force_sampling
-        row.prop(operator, 'export_def_bones')
+        if operator.export_animation_mode == 'NORMAL':
+            layout.prop(operator, 'export_frame_range')
+            layout.prop(operator, 'export_frame_step')
+            layout.prop(operator, 'export_force_sampling')
+            layout.prop(operator, 'export_nla_strips')
+
+            row = layout.row()
+            row.active = operator.export_force_sampling
+            row.prop(operator, 'export_def_bones')
+
+        else:
+            layout.prop(operator, 'export_frame_step')
 
 
 class GLTF_PT_export_animation_shapekeys(bpy.types.Panel):
