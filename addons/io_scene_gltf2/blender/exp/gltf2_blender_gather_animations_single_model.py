@@ -62,6 +62,7 @@ def gather_animations(scene, export_settings):
     animations = []
 
     needs_animation_data_clear = False
+    orig_use_nla = None
     orig_solo_track = None
     orig_frame = None
     orig_subframe = None
@@ -70,6 +71,9 @@ def gather_animations(scene, export_settings):
         if arma_ob.animation_data is None:
             arma_ob.animation_data_create()
             needs_animation_data_clear = True
+
+        orig_use_nla = arma_ob.animation_data.use_nla
+        arma_ob.animation_data.use_nla = True
 
         tmp_nla_track = arma_ob.animation_data.nla_tracks.new()
 
@@ -90,6 +94,9 @@ def gather_animations(scene, export_settings):
         if needs_animation_data_clear:
             arma_ob.animation_data_clear()
         else:
+            if orig_use_nla is not None:
+                arma_ob.animation_data.use_nla = orig_use_nla
+
             if orig_solo_track is None:
                 arma_ob.animation_data.nla_tracks[0].is_solo = True
                 arma_ob.animation_data.nla_tracks[0].is_solo = False
