@@ -89,6 +89,7 @@ def __gather_node(blender_object, library, blender_scene, dupli_object_parent, e
         translation=None,
         weights=weights
     )
+    node.__blender_data = ('OBJECT', blender_object)
 
     # If node mesh is skined, transforms should be ignored at import, so no need to set them here
     if node.skin is None:

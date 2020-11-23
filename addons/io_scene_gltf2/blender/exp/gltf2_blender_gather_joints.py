@@ -87,6 +87,7 @@ def gather_joint(blender_object, blender_bone, export_settings):
         translation=translation,
         weights=None
     )
+    node.__blender_data = ('BONE', blender_object, blender_bone.name)
 
     export_user_extensions('gather_joint_hook', export_settings, node, blender_bone)
 

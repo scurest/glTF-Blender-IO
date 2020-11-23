@@ -777,14 +777,14 @@ class GLTF_PT_export_animation_export(bpy.types.Panel):
 
         layout.active = operator.export_animations
 
-        layout.prop(operator, 'export_frame_range')
+        #layout.prop(operator, 'export_frame_range')
         layout.prop(operator, 'export_frame_step')
-        layout.prop(operator, 'export_force_sampling')
-        layout.prop(operator, 'export_nla_strips')
+        #layout.prop(operator, 'export_force_sampling')
+        #layout.prop(operator, 'export_nla_strips')
 
-        row = layout.row()
-        row.active = operator.export_force_sampling
-        row.prop(operator, 'export_def_bones')
+        #row = layout.row()
+        #row.active = operator.export_force_sampling
+        #row.prop(operator, 'export_def_bones')
 
 
 class GLTF_PT_export_animation_shapekeys(bpy.types.Panel):
