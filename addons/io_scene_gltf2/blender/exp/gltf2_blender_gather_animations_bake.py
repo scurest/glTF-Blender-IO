@@ -150,35 +150,11 @@ def __get_gltf_trs_from_object(ob, export_settings):
 
 
 def __get_gltf_trs_from_bone(pbone, arma_ob, export_settings):
-    # This is just copied from gltf2_blender_gather_joints, let's not
-    # pretend I know how it works.
-
-    # XXX: suspect this is buggy; gltf2_blender_gather_nodes also mucks
-    # with bone transforms doesn't it?
-
-    axis_basis_change = Matrix.Identity(4)
-    if export_settings[gltf2_blender_export_keys.YUP]:
-        axis_basis_change = Matrix(
-            ((1.0, 0.0, 0.0, 0.0), (0.0, 0.0, 1.0, 0.0), (0.0, -1.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
-
-    if pbone.parent is None:
-        correction_matrix_local = axis_basis_change @ pbone.bone.matrix_local
-    else:
-        correction_matrix_local = (
-            pbone.parent.bone.matrix_local.inverted() @
-            pbone.bone.matrix_local
-        )
-
-    if (pbone.bone.use_inherit_rotation == False or pbone.bone.inherit_scale != "FULL") and pbone.parent != None:
-        rest_mat = (pbone.parent.bone.matrix_local.inverted_safe() @ pbone.bone.matrix_local)
-        matrix_basis = (rest_mat.inverted_safe() @ pbone.parent.matrix.inverted_safe() @ pbone.matrix)
-    else:
-        matrix_basis = pbone.matrix
-        matrix_basis = arma_ob.convert_space(pose_bone=pbone, matrix=matrix_basis, from_space='POSE', to_space='LOCAL')
-
-    t, r, s = (correction_matrix_local @ matrix_basis).decompose()
-    r = Quaternion((r[1], r[2], r[3], r[0]))  # wxyz -> xyzw
-
+    from io_scene_gltf2.blender.exp import gltf2_blender_gather_joints
+    t, r, s = gltf2_blender_gather_joints.__gather_trans_rot_scale(pbone, export_settings)
+    if t is None: t = [0, 0, 0]
+    if r is None: r = [0, 0, 0, 1]
+    if s is None: s = [1, 1, 1]
     return t, r, s
 
 
