@@ -230,6 +230,23 @@ def custom_data_array_to_accessor(array):
 
     indices_nonzero = np.nonzero(array)[0]
     num_nonzero = len(indices_nonzero)
+
+    if num_nonzero == 0:
+        return gltf2_io.Accessor(
+            count=len(array),
+            component_type=gltf2_io_constants.ComponentType.Float,
+            type=gltf2_io_constants.DataType.Scalar,
+            buffer_view=None,
+            byte_offset=None,
+            extensions=None,
+            extras=None,
+            max=None,
+            min=None,
+            name=None,
+            normalized=None,
+            sparse=None,
+        )
+
     index_size = (
         1 if indices_nonzero[-1] < 256 else
         2 if indices_nonzero[-1] < 65536 else
